@@ -1,6 +1,6 @@
-import hmac
-import hashlib
 import base64
+import hashlib
+import hmac
 
 class ApiBase():
     def __init__(self, exchange_id=None):
@@ -12,3 +12,11 @@ class ApiBase():
         signature = hmac.new(hmac_key, message, hashlib.sha256).digest()
         signature_b64 = base64.b64encode(signature).decode()
         return signature_b64
+
+    def get_auth(self):
+        raise NotImplementedError
+
+    def get_query(self):
+        raise NotImplementedError
+
+
