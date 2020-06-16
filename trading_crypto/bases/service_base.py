@@ -2,8 +2,8 @@ import asyncio
 import os
 import pika
 
+from bases.data.sql import SQL
 from common.mq_session import MQSession
-from data.sql import SQL
 from dotenv import load_dotenv
 load_dotenv()
 

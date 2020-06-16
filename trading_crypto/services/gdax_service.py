@@ -4,6 +4,8 @@ from bases.service_base import ServiceBase
 from common.mq_session import MQSession
 from common.request_throttle import RequestThrottle
 from common.two_way_dict import TwoWayDict
+from services.utility.token_service import TokenService
+from services.utility.symbol_service import SymbolService
 
 #enum imports
 
@@ -16,7 +18,7 @@ class GdaxService(ServiceBase):
     private_throttle_queue = 'gdax_private_throttle_queue'
 
     def __init__(self, exchange):
-            super(GdaxService, self).__init__()
+        super(GdaxService, self).__init__()
         self.api = GdaxApi()
         self.exchange = exchange
         self.tokens = TokenService().get_tokens_by_exchange(exchange_id=self.exchange.id) or []
@@ -26,16 +28,16 @@ class GdaxService(ServiceBase):
         self.OrderSideMap['buy'] = OrderSideEnum.BUY
         self.OrderSideMap['sell'] = OrderSideEnum.SELL
         
-        self.OrderTypeMap = TwoWayDict()
-        self.OrderTypeMap['limit'] = OrderTypeEnum.LIMIT                        
-        self.OrderTypeMap['market'] = OrderTypeEnum.MARKET    
+        # self.OrderTypeMap = TwoWayDict()
+        # self.OrderTypeMap['limit'] = OrderTypeEnum.LIMIT                        
+        # self.OrderTypeMap['market'] = OrderTypeEnum.MARKET    
 
-        self.OrderTifMap = TwoWayDict()
-        self.OrderTifMap['GTC'] = OrderTifEnum.GTC
-        self.OrderTifMap['GTE'] = OrderTifEnum.GTE
-        self.OrderTifMap['IOC'] = OrderTifEnum.IOC
-        self.OrderTifMap['FOK'] = OrderTifEnum.FOK
-        self.OrderTifMap['NOACK'] = OrderTifEnum.NOACK
+        # self.OrderTifMap = TwoWayDict()
+        # self.OrderTifMap['GTC'] = OrderTifEnum.GTC
+        # self.OrderTifMap['GTE'] = OrderTifEnum.GTE
+        # self.OrderTifMap['IOC'] = OrderTifEnum.IOC
+        # self.OrderTifMap['FOK'] = OrderTifEnum.FOK
+        # self.OrderTifMap['NOACK'] = OrderTifEnum.NOACK
 
     @RequestThrottle(public_throttle_queue, weight=1, expiry_time=334, limit=3)
     def get_tokens(self):
