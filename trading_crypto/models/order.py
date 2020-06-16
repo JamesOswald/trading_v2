@@ -16,7 +16,7 @@ import uuid
 
 
 class Order(Base):
-    __tablename__='orders'
+    __tablename__='order'
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), unique=True, nullable=False)
     side=Column(Integer, nullable=False)
@@ -27,8 +27,8 @@ class Order(Base):
     price=Column(Float(precision=8,asdecimal=False), nullable=True)
     quantity_filled=Column(Float, default=0.0)
     exchange_order_id=Column(String)
-    exchange_id=Column(Integer, ForeignKey('worker.id'),nullable=False)
-    strategy_id=Column(Integer, ForeignKey('worker.id'))
+    exchange_id=Column(Integer, ForeignKey('exchange.id'),nullable=False)
+    strategy_id=Column(Integer, ForeignKey('strategy.id'))
     session_id=Column(Integer, ForeignKey('strategy_session.id'))
     symbol_id = Column(Integer, ForeignKey('symbols.id'), nullable=False)
     fee = Column(Float, default=0.0)
@@ -37,9 +37,9 @@ class Order(Base):
     order_create_time=Column(Integer, default=time())
     time_created = Column(Integer, default=time())
     time_updated = Column(Integer, onupdate=time())
-    strategy = relationship('Worker', foreign_keys=[strategy_id])
+    strategy = relationship('Worker', foreign_keys=[strategy_id]) #TODO
     strategy_session = relationship('StrategySession')
-    exchanges = relationship('Worker', foreign_keys=[exchange_id])
+    exchange = relationship('Exchange', foreign_keys=[exchange_id])
     symbols = relationship('Symbol')
     test_id = Column(Integer, ForeignKey('test.id'), nullable=True)
     test = relationship("Test", back_populates="orders")

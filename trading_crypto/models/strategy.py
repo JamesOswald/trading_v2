@@ -7,16 +7,16 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Float
 from sqlalchemy.orm import relationship
 from enums.worker_type import WorkerTypeEnum
 
-class Exchange(Worker):
-    __tablename__ = 'exchange'
+class Strategy(Worker):
+    __tablename__ = 'strategy'
     id = Column(Integer, ForeignKey('worker.id'), primary_key=True)
 
     __mapper_args__ = {
-        'polymorphic_identity':WorkerTypeEnum.EXCHANGE.value
+        'polymorphic_identity':WorkerTypeEnum.STRATEGY.value
     }
 
     def __init__(self, name):
-        super().__init__(name, WorkerTypeEnum.EXCHANGE.value)
+        super().__init__(name, WorkerTypeEnum.STRATEGY.value)
 
     def __repr__(self):
-        return ("Exchange<{}>".format(self.exchange))
+        return ("Strategy<{}>".format(self.strategy))

@@ -11,12 +11,9 @@ from models.exchange import Exchange
 
 
 class Token(Base):
-    __tablename__='tokens'
+    __tablename__='token'
     id=Column(Integer, primary_key=True)
     ticker=Column(String)
-    free=Column(Float, nullable=False)
-    locked=Column(Float, nullable=False)
-    total=Column(Float, nullable=False)
     exchange_id=Column(Integer, ForeignKey('exchange.id'), nullable=False)
     exchange = relationship('Exchange')
 

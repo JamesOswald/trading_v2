@@ -9,17 +9,15 @@ from sqlalchemy.orm import relationship
 from models.token import Token
 
 class Symbol(Base):
-    __tablename__='symbols'
+    __tablename__='symbol'
     id=Column(Integer, primary_key=True)
     ticker=Column(String, nullable=False)
     tick_size=Column(Float)
-    base=Column(String, ForeignKey('base.ticker'), nullable=False)
-    quote_id=Column(String, ForeignKey('quote.ticker'), nullable=False)
-    base_id=Column(Integer, ForeignKey('base.id'), nullable=False)
-    quote_id=Column(Integer, ForeignKey('quote.id'), nullable=False)
+    base_id=Column(Integer, ForeignKey('token.id'), nullable=False)
+    quote_id=Column(Integer, ForeignKey('token.id'), nullable=False)
     exchange_id=Column(Integer, ForeignKey('exchange.id'), nullable=False)
-    base = relationship('Token')
-    quote = relationship('Token')
+    base = relationship('Token', foreign_keys=[base_id])
+    quote = relationship('Token', foreign_keys=[quote_id])
     exchange = relationship('Exchange')
 
     def __init__(self, ticker="", tick_size=0, base_id=None, quote_id=None, exchange_id=0):

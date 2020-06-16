@@ -9,11 +9,13 @@ from services.gdax_service import GdaxService
 
 #enum imports
 from enums.worker_type import WorkerTypeEnum
+from models.exchange import Exchange
 
 #model imports
-from models.symbol import Symbol
 from models.worker import Worker
 from models.token import Token 
+from models.symbol import Symbol
+
 
 
 
@@ -26,7 +28,7 @@ session = Session()
 
 # get_or_create(session, Worker, id = 1, name='OMS', worker_type=WorkerTypeEnum.OMS.value)
 
-get_or_create(session, Worker, id = 1, name='GDAX', worker_type=WorkerTypeEnum.EXCHANGE.value)
+get_or_create(session, Exchange, name='GDAX')
 
 # get_or_create(session, Worker, id = 2, name='HEARTBEAT', worker_type=WorkerTypeEnum.HEARTBEAT.value)
 
@@ -66,8 +68,8 @@ session.commit()
 # exchange = session.query(Worker).filter(Worker.id == 6).one()
 # BinanceService(exchange=exchange).get_exchange_info(update_symbols=True)
 
-exchange = session.query(Worker).filter(Worker.id == 1).one()
-GdaxService(exchange=exchange).get_tokens()
+exchange = session.query(Exchange).filter(Exchange.id == 1).one()
+#GdaxService(exchange=exchange).get_tokens()
 #GdaxService(exchange=exchange).get_market_pairs()
 
 # exchange = session.query(Worker).filter(Worker.id == 12).one()

@@ -15,7 +15,12 @@ class Worker(Base):
     incoming_route_list = {}
     outgoing_route_list = {}
 
-    def __init__(self, id, name, worker_type):
+    __mapper_args__ = {
+        'polymorphic_identity':0,
+        'polymorphic_on': worker_type 
+    }
+
+    def __init__(self, name, worker_type):
         self.name = name
         self.worker_type = worker_type
 
