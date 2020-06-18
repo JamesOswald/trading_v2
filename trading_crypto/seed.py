@@ -69,8 +69,8 @@ session.commit()
 # BinanceService(exchange=exchange).get_exchange_info(update_symbols=True)
 
 exchange = session.query(Exchange).filter(Exchange.id == 1).one()
-#GdaxService(exchange=exchange).get_tokens()
-#GdaxService(exchange=exchange).get_market_pairs()
+GdaxService(exchange=exchange).get_tokens()
+GdaxService(exchange=exchange).get_market_pairs()
 
 # exchange = session.query(Worker).filter(Worker.id == 12).one()
 # BitmaxService(exchange=exchange).get_tokens()
