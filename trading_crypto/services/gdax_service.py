@@ -139,6 +139,9 @@ class GdaxService(ServiceBase):
 
     @RequestThrottle(private_throttle_queue, weight=1, expiry_time=200, limit=5)
     def get_fees(self):
+        """
+        Gets all exchange fees
+        """
         data = self.send_async_request(self.api.get_fees)
         fee = Fee(exchange=self.exchange, maker=float(data['maker_fee_rate']), taker=float(data['taker_fee_rate']))
         return fee

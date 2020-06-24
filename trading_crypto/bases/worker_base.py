@@ -26,6 +26,7 @@ class WorkerBase:
         self.mq_session = MQSession()
         self.sql = SQL()
         self.session = self.sql.get_session()
+        self.refresh_time = 5
         if name or worker_id:
             if name:
                 self.worker = self.session.query(Worker).filter(Worker.name == name).one()
