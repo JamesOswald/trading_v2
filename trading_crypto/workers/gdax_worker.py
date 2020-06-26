@@ -1,16 +1,17 @@
 #standard imports
+import asyncio
 import json
 import os
 import pickle as p
 import time
 import typing
 
-from autobahn.twisted.websocket import WebSocketClientFactory, WebSocketClientProtocol, connectWS
+from autobahn.asyncio.websocket import WebSocketClientFactory, WebSocketClientProtocol
 from bases.exchange_worker_base import ExchangeWorkerBase
 from services.gdax_service import GdaxService
 from multiprocessing import Manager, Pool, Process, Queue
 from time import sleep
-from twisted.internet import reactor
+
 
 try:
     import thread
@@ -39,10 +40,16 @@ class GdaxWorker(ExchangeWorkerBase):
         self.gdax_service = GdaxService(self.exchange)
         self.incoming_depths = self.manager.dict()
         self.open_orders = self.manager.dict()
-        self.ws = WebSocketClientFactory(self.socket_url)
-        self.ws.protocol = WebSocket
-        connectWS(self.ws)
-        reactor.run()
+
+        #start websocket client
+        self.ws = WebSocketClientFactory()
+        self.ws.protocol = GdaxWS
+        loop = asyncio.get_event_loop()
+        coro = loop.create_connection(self.ws, self.socket_url, ssl=True)
+        loop.run_until_complete(coro)
+        loop.run_forever()
+        loop.close()
+        
         self.message_subscription_map = {
             ChannelEnum.DEPTH: "level2",
             ChannelEnum.TRADES: "matches",
@@ -88,7 +95,7 @@ class GdaxWorker(ExchangeWorkerBase):
 
     def start(self):
         super().start()
-    
+
         for channel in ChannelEnum:
             p = Process(target=self.listen_worker, args=(channel,))
             p.start() 

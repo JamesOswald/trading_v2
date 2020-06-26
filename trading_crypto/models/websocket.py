@@ -1,8 +1,7 @@
 import json
-from autobahn.twisted.websocket import WebSocketServerProtocol
-from twisted.internet import reactor
+from autobahn.asyncio.websocket import WebSocketClientProtocol
 
-class WebSocket(WebSocketServerProtocol):
+class WebSocket(WebSocketClientProtocol):
     def onConnect(self, response):
         print('Server connected. {}'.format(response.peer))
 

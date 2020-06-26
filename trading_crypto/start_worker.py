@@ -2,12 +2,15 @@ import argparse
 import asyncio
 import signal
 import sys
+import os
 parser = argparse.ArgumentParser()
 parser.add_argument("-w","--worker", help="specify worker to run", type=str)
 args = parser.parse_args()
 
-from workers.gdax_worker import GdaxWorker
+from workers.gdax_worker import GdaxWorker, GdaxWS
 # from workers.market_data_worker import MDWorker
+
+from models.websocket import WebSocket
 
 import asyncio
 
@@ -27,6 +30,10 @@ if __name__ == '__main__':
             oms = OMS()
             oms.start()
         elif args.worker in workers.keys():
+            # ws = WebSocketClientFactory(os.getenv("GDAX_SOCKET_URL"))
+            # ws.protocol = GdaxWS
+            # connectWS(ws)
+            # reactor.run()
             workers[args.worker]().start()
         else:
             raise Exception("Unknown Worker")
