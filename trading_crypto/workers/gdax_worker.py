@@ -24,7 +24,7 @@ from enums.channel import ChannelEnum
 #model imports
 from models.websocket import WebSocket
 
-class GdaxWS(WebSocket):
+class GdaxWS(WebSocketClientProtocol):
     def onOpen(self):
         print('open')
 
@@ -32,29 +32,32 @@ class GdaxWS(WebSocket):
         data = json.loads(payload.decode('utf8'))
         print(data)
 
+
 class GdaxWorker(ExchangeWorkerBase):
     def __init__(self):
         exchange_id = int(os.getenv("GDAX_EXCHANGE_ID"))
         super(GdaxWorker, self).__init__(exchange_id)
-        self.socket_url = os.getenv("GDAX_SOCKET_URL")
+        self.socket_url =  "wss://ws-feed.pro.coinbase.com/" #os.getenv("GDAX_SOCKET_URL")
         self.gdax_service = GdaxService(self.exchange)
         self.incoming_depths = self.manager.dict()
         self.open_orders = self.manager.dict()
 
         #start websocket client
-        self.ws = WebSocketClientFactory()
+        self.ws = WebSocketClientFactory(self.socket_url)
         self.ws.protocol = GdaxWS
-        loop = asyncio.get_event_loop()
-        coro = loop.create_connection(self.ws, self.socket_url, ssl=True)
-        loop.run_until_complete(coro)
-        loop.run_forever()
-        loop.close()
-        
+        x = thread.start_new_thread(self.thread_runner,())
+
         self.message_subscription_map = {
             ChannelEnum.DEPTH: "level2",
             ChannelEnum.TRADES: "matches",
             ChannelEnum.BAR: ["ticker", "heartbeat"]}
         # self.socket_subscriptions = []
+    
+    def thread_runner(self): 
+        loop = asyncio.new_event_loop()
+        coro = loop.create_connection(self.ws, "pro.coinbase.com", 9443, ssl=True)
+        loop.run_until_complete(coro)
+        asyncio.set_event_loop(loop)
 
     def listen_worker(self, channel_enum): 
         """
