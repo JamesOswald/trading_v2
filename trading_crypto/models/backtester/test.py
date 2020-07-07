@@ -14,8 +14,8 @@ class Test(Base):
     __tablename__='test'
     id = Column(Integer, primary_key=True)
     test_type = Column(Integer, nullable=False)
-    orders = relationship('Order', back_populates="test")
-    depths = relationship('Depth', back_populates="test")
+    # orders = relationship('Order')
+    # depths = relationship('Depth')
     time_created = Column(Integer, default=time())
     time_updated = Column(Integer, onupdate=time())
     depth_feeders = {}

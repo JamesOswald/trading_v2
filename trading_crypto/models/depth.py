@@ -16,7 +16,6 @@ from enums.depth_side import DepthSideEnum
 from models.order import Order
 from models.symbol import Symbol
 from models.token import Token
-from models.backtester.test import Test
 from models.text_pickle_type import TextPickleType
 
 class DepthLevel():
@@ -30,25 +29,29 @@ class Depth(Base):
     __tablename__='depth'
     id = Column(Integer, primary_key=True)
     symbol_id=Column(Integer, ForeignKey('symbol.id'), nullable=False)
-    base=Column(String, ForeignKey("base.ticker"), nullable=False)
-    quote=Column(String, ForeignKey("quote.ticker"), nullable=False)
-    base_id=Column(Integer, ForeignKey("base.id"), nullable=False)
-    quote_id=Column(Integer, ForeignKey("quote.id"), nullable=False)
+    base=Column(String, ForeignKey("token.ticker"), nullable=False)
+    quote=Column(String, ForeignKey("token.ticker"), nullable=False)
+    base_id=Column(Integer, ForeignKey("token.id"), nullable=False)
+    quote_id=Column(Integer, ForeignKey("token.id"), nullable=False)
     bids=Column(TextPickleType()) #{float(price): float(quantity)}
     asks=Column(TextPickleType()) #{float(price): float(quantity)}
     timestamp=Column(Float, nullable=True)
     symbol = relationship("Symbol")
-    base = relationship("Token")
-    quote = relationship("Token")
+    base_ticker = relationship("Token", foreign_keys=[base])
+    quote_ticker = relationship("Token", foreign_keys=[quote])
+    base_obj = relationship("Token", foreign_keys=[base_id])
+    quote_obj = relationship("Token", foreign_keys=[quote_id])
     
 
-    def __init__(self, symbol=None, base="", quote="", symbol_id=-1, timestamp=0):
-        self.base  = base
-        self.quote = quote
+    def __init__(self, symbol, timestamp=0):
+        if type(symbol) == int:
+            self.symbol_id = symbol
+        else:
+            self.symbol = symbol
+        self.base_id = self.symbol.base_id
+        self.quote_id = self.symbol.quote_id
         self.bids  = {}
         self.asks  = {}
-        self.symbol_id = symbol_id
-        self.symbol = symbol
         self.timestamp = timestamp
         self.recording = True 
          

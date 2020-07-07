@@ -15,7 +15,7 @@ from enums.order.order_side_enum import OrderSideEnum
 from enums.order.order_status_enum import OrderStatusEnum
 from enums.order.order_type_enum import OrderTypeEnum
 from enums.order.order_tif_enum import OrderTifEnum
-from enums.granularity_enum import GranularityEnum
+from enums.granularity import GranularityEnum
 
 #model imports
 from models.token import Token
