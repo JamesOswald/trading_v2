@@ -44,11 +44,6 @@ from models.backtester.test import Test
 class StrategyBase(WorkerBase):
     def __init__(self, config_path, start_later=False):
         signal.signal(signal.SIGINT, self.handler)
-        with open(config_path) as config_file:
-            self.config = json.load(config_file)
-        strategy_name = self.config['NAME']
-        self.meta = self.config['META']
-        self.running_backtest = True if self.config['RUNNING_BACKTEST'] == True else False
         super().__init__(name=strategy_name)
         self.symbol_service = SymbolService()
         self.token_service = TokenService()
@@ -180,20 +175,20 @@ class StrategyBase(WorkerBase):
         bar_symbols = []
         trade_symbols = []
         
-        for symbol in self.config['SYMBOLS']:
-            if ChannelEnum.DEPTH.value in self.config['SYMBOLS'][symbol]:
-                depth_symbols.append(int(symbol))
-                depth_symbols = self.symbol_service.get_symbols_from_array(depth_symbols)
-            if ChannelEnum.BAR.value in self.config['SYMBOLS'][symbol]:
-                bar_symbols.append(int(symbol))
-                bar_symbols = self.symbol_service.get_symbols_from_array(bar_symbols)
-            if ChannelEnum.TRADES.value in self.config['SYMBOLS'][symbol]:
-                trade_symbols.append(int(symbol))
-                trade_symbols = self.symbol_service.get_symbols_from_array(trade_symbols)
-        channel_dict_map = {}
-        channel_dict_map[ChannelEnum.DEPTH] = (depth_symbols, "depth")
-        channel_dict_map[ChannelEnum.BAR] = (bar_symbols, "bar")
-        channel_dict_map[ChannelEnum.TRADES] = (trade_symbols, "trade")
+        # for symbol in self.config['SYMBOLS']:
+        #     if ChannelEnum.DEPTH.value in self.config['SYMBOLS'][symbol]:
+        #         depth_symbols.append(int(symbol))
+        #         depth_symbols = self.symbol_service.get_symbols_from_array(depth_symbols)
+        #     if ChannelEnum.BAR.value in self.config['SYMBOLS'][symbol]:
+        #         bar_symbols.append(int(symbol))
+        #         bar_symbols = self.symbol_service.get_symbols_from_array(bar_symbols)
+        #     if ChannelEnum.TRADES.value in self.config['SYMBOLS'][symbol]:
+        #         trade_symbols.append(int(symbol))
+        #         trade_symbols = self.symbol_service.get_symbols_from_array(trade_symbols)
+        # channel_dict_map = {}
+        # channel_dict_map[ChannelEnum.DEPTH] = (depth_symbols, "depth")
+        # channel_dict_map[ChannelEnum.BAR] = (bar_symbols, "bar")
+        # channel_dict_map[ChannelEnum.TRADES] = (trade_symbols, "trade")
 
         print(depth_symbols)
         #create new strategy session

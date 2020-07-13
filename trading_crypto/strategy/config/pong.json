@@ -1,11 +1,9 @@
 {
-    "NAME" : "PONG",
     "ID" : 2,
     "SYMBOLS" : {
-        "20" : [0]
+        "20" : [0],
+        "21" : [0, 1]
     },
-    "CHANNELS" : [0],
-    "EXCHANGES" : [1],
     "RUNNING_BACKTEST" : false,
     "META" : true
 }
