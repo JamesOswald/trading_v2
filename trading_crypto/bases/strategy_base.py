@@ -15,16 +15,15 @@ import psutil
 from common import routes
 from common.mq_session import MQSession
 from common.two_way_dict import TwoWayDict
-from common.timed import timed
 from common.set_with_multiprocessing import set_with_multiprocessing
-from data.sql import SQL
+from bases.data.sql import SQL
 from dotenv import load_dotenv
 from models.depth import Depth
-from models.enums.channel_enums import ChannelEnum
-from models.enums.route_type import RouteTypeEnum
-from models.enums.orders.order_status_enum import OrderStatusEnum
-from models.enums.orders.order_type_enum import OrderTypeEnum
-from models.enums.state_enum import StateEnum
+from enums.channel import ChannelEnum
+from enums.route_type import RouteTypeEnum
+from enums.order.order_status_enum import OrderStatusEnum
+from enums.order.order_type_enum import OrderTypeEnum
+# from enums.state_enum import StateEnum
 from models.order import Order
 from models.strategy_session import StrategySession
 from models.symbol import Symbol
@@ -32,27 +31,29 @@ from models.token import Token
 from services.utility.symbol_service import SymbolService
 from services.utility.token_service import TokenService
 from common.generic_consumer import start_consumer_process, generic_consumer
-from services.utility.twilio_service import TwilioService
+# from services.utility.twilio_service import TwilioService
 from services.utility.worker_service import WorkerService
-from workers.worker_base import WorkerBase
+from bases.worker_base import WorkerBase
 import typing
 from typing import List
 from models.worker import Worker
 from models.route import Route
+from models.strategy import Strategy
 from models.backtester.test import Test
 
 class StrategyBase(WorkerBase):
     def __init__(self, config_path, start_later=False):
         signal.signal(signal.SIGINT, self.handler)
-        load_dotenv(config_path)
-        strategy_name = os.getenv("NAME")
-        self.meta = bool(os.getenv("META"))
-        self.running_backtest = True if os.getenv('RUNNING_BACKTEST') == 'True' else False
+        with open(config_path) as config_file:
+            self.config = json.load(config_file)
+        strategy_name = self.config['NAME']
+        self.meta = self.config['META']
+        self.running_backtest = True if self.config['RUNNING_BACKTEST'] == True else False
         super().__init__(name=strategy_name)
         self.symbol_service = SymbolService()
         self.token_service = TokenService()
         self.worker_service = WorkerService()
-        self.twilio_service = TwilioService()
+        # self.twilio_service = TwilioService()
         self.session = self.sql.get_session()
         self.session.expire_on_commit = False
         
@@ -67,7 +68,7 @@ class StrategyBase(WorkerBase):
         
 
         self.fees = self.manager.dict()
-        self.state = StateEnum.Stop
+        # self.state = StateEnum.Stop
         self.orders=self.manager.dict()
         self.routes = self.manager.dict()
 
@@ -76,6 +77,8 @@ class StrategyBase(WorkerBase):
         self.channel_route_type_map[ChannelEnum.BAR] = (RouteTypeEnum.STRATEGY_RECIEVE_BAR, self.bar_callback)
         self.channel_route_type_map[ChannelEnum.TRADES] = (RouteTypeEnum.STRATEGY_REVIEVE_TRADE, self.trades_callback)
         
+        
+
         if not start_later: 
             self.start_session()
 
@@ -126,21 +129,21 @@ class StrategyBase(WorkerBase):
         """
         Override to change how the strategy grabs the exchange ids it needs to trade, by deafult this uses an enviorment variable called EXCHANGES
         """
-        exchange_ids = [int(v) for v in os.getenv("EXCHANGES").split(',')]
+        exchange_ids = [int(v) for v in self.config["EXCHANGES"]]
         return self.worker_service.get_workers_from_id_array(exchange_ids)
     
     def get_symbols(self) -> List[Symbol]:
         """
         Override to change how the strategy grabs the symbols it needs to trade, by deafult this uses an enviorment variable called SYMBOLS
         """
-        symbol_ids = [int(v) for v in os.getenv("SYMBOLS").split(',')] 
+        symbol_ids = [int(v) for v in self.config["SYMBOLS"]] 
         return self.symbol_service.get_symbols_from_array(symbol_ids)
     
     def get_channels(self) -> List[int]: 
         """
         Override to change how the strategy grabs the channels that it needs to trade, by default this uses an enviorment variable called CHANNELS
         """
-        return [int(v) for v in os.getenv("CHANNELS").split(',')]
+        return [int(v) for v in self.config["CHANNELS"]]
     
     def get_tokens(self) -> List[Token]:
         """
@@ -173,39 +176,61 @@ class StrategyBase(WorkerBase):
         
         channels = self.get_channels()
 
+        depth_symbols = []
+        bar_symbols = []
+        trade_symbols = []
+        
+        for symbol in self.config['SYMBOLS']:
+            if ChannelEnum.DEPTH.value in self.config['SYMBOLS'][symbol]:
+                depth_symbols.append(int(symbol))
+                depth_symbols = self.symbol_service.get_symbols_from_array(depth_symbols)
+            if ChannelEnum.BAR.value in self.config['SYMBOLS'][symbol]:
+                bar_symbols.append(int(symbol))
+                bar_symbols = self.symbol_service.get_symbols_from_array(bar_symbols)
+            if ChannelEnum.TRADES.value in self.config['SYMBOLS'][symbol]:
+                trade_symbols.append(int(symbol))
+                trade_symbols = self.symbol_service.get_symbols_from_array(trade_symbols)
+        channel_dict_map = {}
+        channel_dict_map[ChannelEnum.DEPTH] = (depth_symbols, "depth")
+        channel_dict_map[ChannelEnum.BAR] = (bar_symbols, "bar")
+        channel_dict_map[ChannelEnum.TRADES] = (trade_symbols, "trade")
+
+        print(depth_symbols)
         #create new strategy session
-        self.strategy_session = StrategySession(strategy_id=self.worker.id, symbols=[s.id for s in self.symbols], channels=channels, exchanges=[e.id for e in self.exchanges])
+        self.strategy_session = StrategySession(strategy_id=self.worker.id, symbols=[s.id for s in self.symbols], depth_symbols=[s.id for s in depth_symbols], bar_symbols=bar_symbols, trade_symbols=trade_symbols, channels=channels, exchanges=[e.id for e in self.exchanges])
         self.session.add(self.strategy_session)
         self.session.commit()
 
+        print(self.strategy_session.depth_symbols)
         # setup fee in route for this strategy
         fee_in_route = Route(RouteTypeEnum.OTHER, consumer_worker=self.worker, strategy_session_id=self.strategy_session.id, channel=channel, route_string="{}_fee_in".format(self.worker.id))
         self.strategy_session.fee_in_route = fee_in_route
 
         #get all tie used in trading
-        self.tokens  = self.get_tokens()
+        self.tokens = self.get_tokens()
         
         start_consumer_process(fee_in_route.route_string, self.fee_callback, self.mq_session)
 
-        self.oms_worker = self.session.query(Worker).filter(Worker.name == 'OMS').one()
+        #self.oms_worker = self.session.query(Worker).filter(Worker.name == 'OMS').one()
         
         #generate all dynamic routes
         sleep(2)
         for exchange in self.strategy_session.exchanges:
             exchange = self.session.query(Worker).filter(Worker.id == exchange).one()
+            route_session = MQSession()
+            for c in self.strategy_session.channels:
+                route_type, callback = self.channel_route_type_map[ChannelEnum(c)]
+                route = Route(route_type=route_type, publisher_worker=exchange, consumer_worker=self.worker, channel=channel, strategy_session_id=self.strategy_session.id, route_string='{}_{}'.format(exchange, c))
+                self.strategy_session.routes.append(route)
+                arguments={'x-match' : 'any'}
+                for symbol in channel_dict_map[ChannelEnum(c)][0]:
+                    if symbol.exchange_id == exchange.id:
+                        arguments[symbol.ticker] = symbol.id
+                channel.queue_declare(queue=route.route_string)
+                channel.queue_bind(exchange='{}_{}'.format(exchange.name, channel_dict_map[ChannelEnum(c)][1]), queue=route.route_string, routing_key='', arguments=arguments)
+                start_consumer_process(queue=route.route_string, callback=callback, mq_session=route_session)
             for symbol in self.symbols: 
-                route_session = MQSession()
                 if symbol.exchange_id == exchange.id:
-                    for c in self.strategy_session.channels:
-                        # get the correct route type and callback function
-                        route_type_and_proper_callback = self.channel_route_type_map[ChannelEnum(c)]
-                        # generate route object and add to list of routes
-                        route = Route(route_type_and_proper_callback[0], exchange, self.worker, channel, symbol=symbol, strategy_session_id=self.strategy_session.id, custom_identifier=self.get_custom_identifier(c, symbol))
-                        self.strategy_session.routes.append(route)
-                        # set up routing on strategy side
-                        #time.sleep(0.2)
-                        start_consumer_process(route.route_string, route_type_and_proper_callback[1], route_session)
-                        
                     if not self.meta:
                         # hook up and create order in and out routes
                         route = Route(RouteTypeEnum.STRATEGY_RECIEVE_ORDER, self.oms_worker, self.worker, channel, symbol=symbol, strategy_session_id=self.strategy_session.id)
@@ -247,5 +272,5 @@ class StrategyBase(WorkerBase):
        
         connection.close()
         self.session.close()
-        self.state = StateEnum.Start
+        # self.state = StateEnum.Start
         sleep(2)

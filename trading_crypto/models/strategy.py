@@ -8,8 +8,7 @@ from sqlalchemy.orm import relationship
 from enums.worker_type import WorkerTypeEnum
 
 class Strategy(Worker):
-    __tablename__ = 'strategy'
-    id = Column(Integer, ForeignKey('worker.id'), primary_key=True)
+    __tablename__ = None
 
     __mapper_args__ = {
         'polymorphic_identity':WorkerTypeEnum.STRATEGY.value
@@ -19,4 +18,4 @@ class Strategy(Worker):
         super().__init__(name, WorkerTypeEnum.STRATEGY.value)
 
     def __repr__(self):
-        return ("Strategy<{}>".format(self.strategy))
+        return ("Strategy<{}>".format(self.name))

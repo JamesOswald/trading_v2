@@ -19,4 +19,4 @@ class Exchange(Worker):
         super().__init__(name, WorkerTypeEnum.EXCHANGE.value)
 
     def __repr__(self):
-        return ("Exchange<{}>".format(self.exchange))
+        return ("Exchange<{}>".format(self.name))

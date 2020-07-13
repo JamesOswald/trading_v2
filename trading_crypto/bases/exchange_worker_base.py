@@ -2,6 +2,7 @@
 import os
 import _pickle as p
 import psutil
+import pika
 import signal
 import sys
 
@@ -16,7 +17,7 @@ from time import sleep
 
 #enum imports
 from enums.channel import ChannelEnum
-#from enums.route_type import RouteTypeEnum
+from enums.route_type import RouteTypeEnum
 
 #model imports
 from models.symbol import Symbol
@@ -26,7 +27,7 @@ from models.worker import Worker
 #from models.route import Route
 #from models.strategy_session import StrategySession
 
-#from common import routes
+from common import routes
 
 class ExchangeWorkerBase(WorkerBase):
     
@@ -56,9 +57,9 @@ class ExchangeWorkerBase(WorkerBase):
         self.symbol_service = SymbolService()
         self.token_service = TokenService()
         
-        # self.route_manager_map[RouteTypeEnum.STRATEGY_RECIEVE_DEPTH] = self.depth_symbols
-        # self.route_manager_map[RouteTypeEnum.STRATEGY_REVIEVE_TRADE] = self.trade_symbols
-        # self.route_manager_map[RouteTypeEnum.STRATEGY_RECIEVE_BAR] = self.bar_symbols
+        self.route_manager_map[RouteTypeEnum.STRATEGY_RECIEVE_DEPTH] = self.depth_symbols
+        self.route_manager_map[RouteTypeEnum.STRATEGY_REVIEVE_TRADE] = self.trade_symbols
+        self.route_manager_map[RouteTypeEnum.STRATEGY_RECIEVE_BAR] = self.bar_symbols
         self.exchange_wide_saving_depth = bool(os.getenv("{}_RECORDING_DEPTH".format(self.exchange.name.upper())))
 
 
@@ -75,15 +76,6 @@ class ExchangeWorkerBase(WorkerBase):
           function is a route object to send the fee back to
         """
       
-        raise NotImplementedError
-
-    def depth_worker(self):
-        raise NotImplementedError
-
-    def trade_worker(self):
-        raise NotImplementedError
-
-    def bar_worker(self):
         raise NotImplementedError
 
     def publish_order_out(self, order): 
@@ -107,10 +99,9 @@ class ExchangeWorkerBase(WorkerBase):
             channel.basic_publish(exchange="", routing_key=routes.oms_balance_update, body=p.dumps(balance))
         _.close()
 
-    def publish_depth_out(self, depth, symbol_id):
+    def publish_depth_out(self, depth, ticker, symbol_id):
         _, channel = self.mq_session.session()
-        for route in self.depth_symbols[symbol_id]: #TODO publish all at once                      
-            channel.basic_publish(exchange="", routing_key=route.route_string, body=p.dumps(depth))
+        channel.basic_publish(exchange='{}_depth'.format(self.worker.name), routing_key='', body=p.dumps(depth), properties=pika.BasicProperties(headers={ticker : symbol_id}))
         if self.exchange_wide_saving_depth:
             self.save_depth_queue.put(depth)
         _.close()
@@ -147,12 +138,10 @@ class ExchangeWorkerBase(WorkerBase):
         
         # deal with order and balance routes
         for oms_route in strategy_session.oms_routes:
-            if oms_route.route_type == RouteTypeEnum.OMS_RECIEVE_ORDER: 
-                if oms_route.symbol.exchange_id == self.exchange.id:
-                    self.order_routes[oms_route.strategy_session_id, oms_route.symbol_id] = oms_route
-            elif oms_route.route_type == RouteTypeEnum.OMS_SUBMIT_ORDER:
-                if oms_route.symbol.exchange_id == self.exchange.id:
-                    start_consumer_process(oms_route.route_string, self.orders_in_callback, self.mq_session)
+            if oms_route.route_type == RouteTypeEnum.OMS_RECIEVE_ORDER and oms_route.symbol.exchange_id == self.exchange.id: 
+                self.order_routes[oms_route.strategy_session_id, oms_route.symbol_id] = oms_route
+            elif oms_route.route_type == RouteTypeEnum.OMS_SUBMIT_ORDER and oms_route.symbol.exchange_id == self.exchange.id:
+                start_consumer_process(oms_route.route_string, self.orders_in_callback, self.mq_session)
             elif oms_route.route_type == RouteTypeEnum.OMS_RECIEVE_BALANCE: 
                 if oms_route.symbol_id in self.balance_routes.keys(): 
                     self.balance_routes[oms_route.symbol_id].append(oms_route)
@@ -160,24 +149,13 @@ class ExchangeWorkerBase(WorkerBase):
                     self.balance_routes[oms_route.symbol_id] = [oms_route]
 
         # deal with market data channels 
-        depth_symbols = self.depth_symbols
-        bar_symbols = self.bar_symbols
-        trade_symbols = self.trade_symbols
-        for route in strategy_session.routes: 
-            if route.symbol.exchange_id == self.exchange.id: 
-                if route.route_type == RouteTypeEnum.STRATEGY_RECIEVE_DEPTH: 
-                    depth_symbols = self.set_market_data_symbols(route, depth_symbols)
-                if route.route_type == RouteTypeEnum.STRATEGY_RECIEVE_BAR:
-                    bar_symbols = self.set_market_data_symbols(route, bar_symbols)
-                if route.route_type == RouteTypeEnum.STRATEGY_REVIEVE_TRADE: 
-                    trade_symbols = self.set_market_data_symbols(route, trade_symbols)
-
-        self.depth_symbols = depth_symbols
-        self.bar_symbols = bar_symbols
-        self.trade_symbols = trade_symbols
+        self.depth_symbols = strategy_session.depth_symbols
+        self.bar_symbols = strategy_session.bar_symbols
+        self.trade_symbols = strategy_session.trade_symbols
+        print(strategy_session.depth_symbols)
         
     
-    def set_market_data_symbols(self, route, market_data_symbol_dictionary):
+    def set_market_data_symbols(self, symbol_id, market_data_symbol_dictionary):
         if route.symbol.id not in market_data_symbol_dictionary.keys():
             market_data_symbol_dictionary[route.symbol.id] = self.manager.list()
         market_data_symbol_dictionary[route.symbol.id].append(route)
@@ -206,31 +184,34 @@ class ExchangeWorkerBase(WorkerBase):
                 sleep(0.25)
 
     def start(self):
+        print(self.depth_symbols)
         self.symbols.extend(self.get_symbols())
-        self.depth_symbols = self.symbols
         self.tokens.extend(self.get_tokens())
         # get fixed routes for the exchange
-        # self.exchange_session_subscribe = getattr(routes, "{}_session_subscribe".format(self.exchange.name))
+        self.exchange_session_subscribe = getattr(routes, "{}_session_subscribe".format(self.exchange.name.lower()))
         # self.exchange_depth_request = getattr(routes, "{}_depth_request".format(self.exchange.name))
         # self.exchange_service_request = getattr(routes, "{}_service_request".format(self.exchange.name))
         # self.exchange_session_unsubscribe = "{}_session_unsubscribe".format(self.exchange.name)
         # self.grab_fee_route = "{}_grab_fee".format(self.exchange.name)
         #declare fixed routes for the exchange
-        # _, channel = self.mq_session.session() 
-        # channel.queue_declare(queue=self.exchange_session_subscribe)
+        _, channel = self.mq_session.session() 
+        channel.exchange_declare(exchange='{}_depth'.format(self.worker.name), exchange_type='headers')
+        channel.exchange_declare(exchange='{}_bar'.format(self.worker.name), exchange_type='headers')
+        channel.exchange_declare(exchange='{}_trade'.format(self.worker.name), exchange_type='headers')
+        channel.queue_declare(queue=self.exchange_session_subscribe)
         # channel.queue_declare(queue=self.exchange_depth_request)
         # channel.queue_declare(queue=self.exchange_service_request)
         # channel.queue_declare(queue=self.grab_fee_route)
         # channel.queue_declare(queue=self.exchange_session_unsubscribe)
         
         #purge queues
-        # channel.queue_purge(self.exchange_session_subscribe)
+        channel.queue_purge(self.exchange_session_subscribe)
         # channel.queue_purge(queue=self.grab_fee_route)
         # channel.queue_purge(self.exchange_session_unsubscribe)
         
         # start_consumer_process(self.grab_fee_route, self.fee_grab_callback, self.mq_session)
         # #subscribe to subscribe_session
-        # start_consumer_process(self.exchange_session_subscribe, self.session_subscribe_callback, self.mq_session)
+        start_consumer_process(self.exchange_session_subscribe, self.session_subscribe_callback, self.mq_session)
         # start_consumer_process(self.exchange_session_unsubscribe, self.session_unsubscribe_callback, self.mq_session)
 
         # #set up depth saving for entire exchange if turned on

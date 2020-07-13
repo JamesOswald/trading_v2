@@ -29,6 +29,7 @@ class WorkerBase:
         self.refresh_time = 0.1
         if name or worker_id:
             if name:
+                print(name)
                 self.worker = self.session.query(Worker).filter(Worker.name == name).one()
             if worker_id: 
                 self.worker = self.session.query(Worker).filter(Worker.id == worker_id).one()

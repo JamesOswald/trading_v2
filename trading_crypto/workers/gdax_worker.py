@@ -79,7 +79,6 @@ class GdaxWorker(ExchangeWorkerBase):
             ChannelEnum.BAR : self.bar_symbols, 
             ChannelEnum.TRADES: self.trade_symbols
         }
-
         already_added_symbols = []
         channel_dictionary = channel_dictionary_map[channel_enum]
         try:
@@ -89,8 +88,8 @@ class GdaxWorker(ExchangeWorkerBase):
                 print("Starting new {} worker".format(channel_enum))
                 subscription_message = {
                     "type": "subscribe",
-                    #"product_ids": list(ticker_id_map.keys()),
-                    "product_ids": ["BTC-USD"],
+                    "product_ids": list(ticker_id_map.keys()),
+                    #"product_ids": ["BTC-USD"],
                     "channels": self.message_subscription_map[channel_enum]
                 }
                 if channel_enum == ChannelEnum.DEPTH:
@@ -107,13 +106,13 @@ class GdaxWorker(ExchangeWorkerBase):
             print("Error : listen_worker {}".format(e))
             
     def start_consumers(self):
-        start_consumer_process(queue='gdax_internal_depth_BTC-USD', callback=self.depth_consumer, mq_session=self.mq_session)
-        # for ticker in self.exchange_websocket.ticker_id_map_depth.keys():
-        #     start_consumer_process(queue='gdax_internal_depth_{}'.format(ticker), callback=self.depth_consumer, mq_session=self.mq_session)
-        # for ticker in self.exchange_websocket.ticker_id_map_bar.keys():
-        #     start_consumer_process(queue='gdax_internal_bar_{}'.format(ticker), callback=self.bar_consumer, mq_session=self.mq_session)
-        # for ticker in self.exchange_websocket.ticker_id_map_trade.keys():
-        #     start_consumer_process(queue='gdax_internal_trade_{}'.format(ticker), callback=self.trade_consumer, mq_session=self.mq_session)
+        #start_consumer_process(queue='gdax_internal_depth_BTC-USD', callback=self.depth_consumer, mq_session=self.mq_session)
+        for ticker in self.exchange_websocket.ticker_id_map_depth.keys():
+            start_consumer_process(queue='gdax_internal_depth_{}'.format(ticker), callback=self.depth_consumer, mq_session=self.mq_session)
+        for ticker in self.exchange_websocket.ticker_id_map_bar.keys():
+            start_consumer_process(queue='gdax_internal_bar_{}'.format(ticker), callback=self.bar_consumer, mq_session=self.mq_session)
+        for ticker in self.exchange_websocket.ticker_id_map_trade.keys():
+            start_consumer_process(queue='gdax_internal_trade_{}'.format(ticker), callback=self.trade_consumer, mq_session=self.mq_session)
  
     def depth_consumer(self, route, method, properties, body): 
         data = p.loads(body)
@@ -148,7 +147,7 @@ class GdaxWorker(ExchangeWorkerBase):
                 depth.asks = depth.sort_book(depth.asks)
             depths[symbol_id] = depth
             self.incoming_depths = depths
-            #TODO publish depth out
+            self.publish_depth_out(depth=depth, ticker=data['product_id'], symbol_id=symbol_id)
 
     def bar_consumer(self, route, method, properties, body): 
         # data = p.loads(body)

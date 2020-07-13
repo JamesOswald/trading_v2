@@ -9,12 +9,15 @@ from services.gdax_service import GdaxService
 
 #enum imports
 from enums.worker_type import WorkerTypeEnum
-from models.exchange import Exchange
 
 #model imports
 from models.worker import Worker
+from models.exchange import Exchange
+from models.strategy import Strategy
 from models.token import Token 
 from models.symbol import Symbol
+from models.strategy_session import StrategySession
+from models.route import Route
 
 
 
@@ -28,7 +31,10 @@ session = Session()
 
 # get_or_create(session, Worker, id = 1, name='OMS', worker_type=WorkerTypeEnum.OMS.value)
 
+
 get_or_create(session, Exchange, name='GDAX')
+
+get_or_create(session, Strategy, name='PONG')
 
 # get_or_create(session, Worker, id = 2, name='HEARTBEAT', worker_type=WorkerTypeEnum.HEARTBEAT.value)
 
