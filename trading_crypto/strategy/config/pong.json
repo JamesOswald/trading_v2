@@ -1,8 +1,7 @@
 {
     "ID" : 2,
     "SYMBOLS" : {
-        "20" : [0],
-        "21" : [0, 1]
+        "20" : [0]
     },
     "RUNNING_BACKTEST" : false,
     "META" : true

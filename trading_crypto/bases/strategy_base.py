@@ -17,6 +17,7 @@ from common.mq_session import MQSession
 from common.two_way_dict import TwoWayDict
 from common.set_with_multiprocessing import set_with_multiprocessing
 from bases.data.sql import SQL
+from bases.data.base import Session
 from dotenv import load_dotenv
 from models.depth import Depth
 from enums.channel import ChannelEnum
@@ -40,11 +41,13 @@ from models.worker import Worker
 from models.route import Route
 from models.strategy import Strategy
 from models.backtester.test import Test
+from models.strategy_config import StrategyConfig, Channel
 
 class StrategyBase(WorkerBase):
     def __init__(self, config_path, start_later=False):
         signal.signal(signal.SIGINT, self.handler)
-        super().__init__(name=strategy_name)
+        self.config = StrategyConfig.from_json(session=Session(), config_path=config_path)
+        super().__init__(worker_id=self.config.strategy_id)
         self.symbol_service = SymbolService()
         self.token_service = TokenService()
         self.worker_service = WorkerService()
@@ -124,21 +127,34 @@ class StrategyBase(WorkerBase):
         """
         Override to change how the strategy grabs the exchange ids it needs to trade, by deafult this uses an enviorment variable called EXCHANGES
         """
-        exchange_ids = [int(v) for v in self.config["EXCHANGES"]]
+        symbol_ids = []
+        for c in self.config.channels:
+            for s in c.symbols:
+                if s.id not in symbol_ids:
+                    symbol_ids.append(s.id)
+        symbols = self.symbol_service.get_symbols_from_array(symbol_ids)
+        exchange_ids = []
+        for symbol in symbols:
+            if symbol.exchange_id not in exchange_ids:
+                exchange_ids.append(symbol.exchange_id)
         return self.worker_service.get_workers_from_id_array(exchange_ids)
     
     def get_symbols(self) -> List[Symbol]:
         """
         Override to change how the strategy grabs the symbols it needs to trade, by deafult this uses an enviorment variable called SYMBOLS
         """
-        symbol_ids = [int(v) for v in self.config["SYMBOLS"]] 
+        symbol_ids = []
+        for c in self.config.channels:
+            for s in c.symbols:
+                if s.id not in symbol_ids:
+                    symbol_ids.append(s.id)
         return self.symbol_service.get_symbols_from_array(symbol_ids)
     
     def get_channels(self) -> List[int]: 
         """
         Override to change how the strategy grabs the channels that it needs to trade, by default this uses an enviorment variable called CHANNELS
         """
-        return [int(v) for v in self.config["CHANNELS"]]
+        return [v for v in self.config.channels]
     
     def get_tokens(self) -> List[Token]:
         """
@@ -175,24 +191,21 @@ class StrategyBase(WorkerBase):
         bar_symbols = []
         trade_symbols = []
         
-        # for symbol in self.config['SYMBOLS']:
-        #     if ChannelEnum.DEPTH.value in self.config['SYMBOLS'][symbol]:
-        #         depth_symbols.append(int(symbol))
-        #         depth_symbols = self.symbol_service.get_symbols_from_array(depth_symbols)
-        #     if ChannelEnum.BAR.value in self.config['SYMBOLS'][symbol]:
-        #         bar_symbols.append(int(symbol))
-        #         bar_symbols = self.symbol_service.get_symbols_from_array(bar_symbols)
-        #     if ChannelEnum.TRADES.value in self.config['SYMBOLS'][symbol]:
-        #         trade_symbols.append(int(symbol))
-        #         trade_symbols = self.symbol_service.get_symbols_from_array(trade_symbols)
-        # channel_dict_map = {}
-        # channel_dict_map[ChannelEnum.DEPTH] = (depth_symbols, "depth")
-        # channel_dict_map[ChannelEnum.BAR] = (bar_symbols, "bar")
-        # channel_dict_map[ChannelEnum.TRADES] = (trade_symbols, "trade")
+        for c in self.config.channels:
+            if c.channel_type == ChannelEnum.DEPTH:
+                depth_symbols = c.symbols
+            if c.channel_type == ChannelEnum.BAR.value:
+                bar_symbols = c.symbols
+            if c.channel_type == ChannelEnum.TRADES.value:
+                trade_symbols = c.symbols
+        channel_dict_map = {}
+        channel_dict_map[ChannelEnum.DEPTH] = (depth_symbols, "depth")
+        channel_dict_map[ChannelEnum.BAR] = (bar_symbols, "bar")
+        channel_dict_map[ChannelEnum.TRADES] = (trade_symbols, "trade")
 
         print(depth_symbols)
         #create new strategy session
-        self.strategy_session = StrategySession(strategy_id=self.worker.id, symbols=[s.id for s in self.symbols], depth_symbols=[s.id for s in depth_symbols], bar_symbols=bar_symbols, trade_symbols=trade_symbols, channels=channels, exchanges=[e.id for e in self.exchanges])
+        self.strategy_session = StrategySession(strategy_id=self.worker.id, symbols=[s.id for s in self.symbols], depth_symbols=[s.id for s in depth_symbols], bar_symbols=[s.id for s in bar_symbols], trade_symbols=[s.id for s in trade_symbols], channels=[c.channel_type.value for c in channels], exchanges=[e.id for e in self.exchanges])
         self.session.add(self.strategy_session)
         self.session.commit()
 
@@ -226,7 +239,7 @@ class StrategyBase(WorkerBase):
                 start_consumer_process(queue=route.route_string, callback=callback, mq_session=route_session)
             for symbol in self.symbols: 
                 if symbol.exchange_id == exchange.id:
-                    if not self.meta:
+                    if not self.config.meta:
                         # hook up and create order in and out routes
                         route = Route(RouteTypeEnum.STRATEGY_RECIEVE_ORDER, self.oms_worker, self.worker, channel, symbol=symbol, strategy_session_id=self.strategy_session.id)
                         #time.sleep(0.2)
@@ -235,7 +248,7 @@ class StrategyBase(WorkerBase):
                         self.strategy_session.oms_routes.append(Route(RouteTypeEnum.STRATEGY_SUBMIT_ORDER, self.worker, self.oms_worker, channel, symbol=symbol, strategy_session_id=self.strategy_session.id))
                         self.strategy_session.oms_routes.append(Route(RouteTypeEnum.OMS_RECIEVE_ORDER, exchange, self.oms_worker, channel, symbol=symbol, strategy_session_id=self.strategy_session.id))
                         self.strategy_session.oms_routes.append(Route(RouteTypeEnum.OMS_SUBMIT_ORDER, self.oms_worker, exchange, channel, symbol=symbol, strategy_session_id=self.strategy_session.id)) 
-            if not self.meta:
+            if not self.config.meta:
                 #start balance subscriber for exchange
                 route = Route(RouteTypeEnum.STRATEGY_RECIEVE_BALANCE, self.oms_worker, self.worker, channel, strategy_session_id=self.strategy_session.id, custom_identifier=str(exchange.id))
                 self.strategy_session.oms_routes.append(route)
@@ -243,7 +256,7 @@ class StrategyBase(WorkerBase):
                 self.strategy_session.oms_routes.append(Route(RouteTypeEnum.OMS_RECIEVE_BALANCE, exchange, self.oms_worker, channel, strategy_session_id=self.strategy_session.id))
                     
             # notify exchange of subscription event
-            if not self.running_backtest:
+            if not self.config.is_backtest:
                 channel.basic_publish(exchange='', routing_key="{}_session_subscribe".format(exchange.name.lower()), body=p.dumps(self.strategy_session))
             else: 
                 #all enviroment variables needed for running the backtest begin with the prefix BACKTEST and are passed to the backtester these can be modified in the respective strategy backtest env file
@@ -251,7 +264,7 @@ class StrategyBase(WorkerBase):
                 channel.basic_publish(exchange='', routing_key=routes.backtester_session_subscribe, body=p.dumps((backtest_config, self.strategy_session)))
 
         #notify oms and logger of subscription event if not meta
-        if not self.meta:
+        if not self.config.meta:
             channel.basic_publish(exchange='', routing_key="oms_session_subscribe", body=p.dumps(self.strategy_session))
             channel.basic_publish(exchange='', routing_key="logger_session_subscribe", body=p.dumps(self.strategy_session))
 

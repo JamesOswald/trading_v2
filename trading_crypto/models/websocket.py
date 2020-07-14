@@ -48,7 +48,7 @@ class WebSocket():
         wst.start()
 
     def thread_runner(self):
-        self.ws.run_forever(ping_interval=61)
+        self.ws.run_forever(ping_interval=500)
 
     def on_open(self):
         print('websocket connected to {}'.format(self.socket_url))

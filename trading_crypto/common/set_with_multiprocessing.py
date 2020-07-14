@@ -9,6 +9,6 @@ def set_with_multiprocessing(obj, value, key=None):
     elif type(obj) == type(Manager().dict()):
         temp_obj[key] = value
     elif type(obj) == type(Manager().list()):
-        temp_obj.append(value)
+        temp_obj.extend(value)
     return temp_obj
     

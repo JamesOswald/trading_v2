@@ -79,10 +79,11 @@ class GdaxWorker(ExchangeWorkerBase):
             ChannelEnum.BAR : self.bar_symbols, 
             ChannelEnum.TRADES: self.trade_symbols
         }
+        print(self.depth_symbols)
         already_added_symbols = []
         channel_dictionary = channel_dictionary_map[channel_enum]
         try:
-            new_symbols = [x.id for x in channel_dictionary if x not in already_added_symbols]
+            new_symbols = [x for x in channel_dictionary if x not in already_added_symbols]
             if new_symbols:
                 ticker_id_map = {s.ticker:s.id for s in self.symbols if s.id in new_symbols}
                 print("Starting new {} worker".format(channel_enum))
@@ -165,7 +166,7 @@ class GdaxWorker(ExchangeWorkerBase):
     def start(self):
         super().start()
         self.exchange_websocket.connect_websocket()
-        sleep(2)
+        sleep(5)
         # for channel in ChannelEnum:
         #     print('running')
         #     p = Process(target=self.listen_worker, args=(channel,))

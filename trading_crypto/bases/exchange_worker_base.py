@@ -9,6 +9,7 @@ import sys
 from bases.data.sql import SQL
 from bases.worker_base import WorkerBase
 from common.generic_consumer import start_consumer_process
+from common.set_with_multiprocessing import set_with_multiprocessing
 from common.two_way_dict import TwoWayDict
 from multiprocessing import Process, Queue, Manager
 from services.utility.symbol_service import SymbolService
@@ -49,9 +50,9 @@ class ExchangeWorkerBase(WorkerBase):
         self.exchange_service_request = ""
         self.symbols = self.manager.list()
         self.tokens = self.manager.list()
-        self.depth_symbols = self.manager.dict()
-        self.bar_symbols = self.manager.dict()
-        self.trade_symbols = self.manager.dict()
+        self.depth_symbols = self.manager.list()
+        self.bar_symbols = self.manager.list()
+        self.trade_symbols = self.manager.list()
         self.balance_routes = self.manager.dict()
         self.route_manager_map = TwoWayDict()
         self.symbol_service = SymbolService()
@@ -149,11 +150,9 @@ class ExchangeWorkerBase(WorkerBase):
                     self.balance_routes[oms_route.symbol_id] = [oms_route]
 
         # deal with market data channels 
-        self.depth_symbols = strategy_session.depth_symbols
-        self.bar_symbols = strategy_session.bar_symbols
-        self.trade_symbols = strategy_session.trade_symbols
-        print(strategy_session.depth_symbols)
-        
+        set_with_multiprocessing(obj=self.depth_symbols, value=strategy_session.depth_symbols)
+        set_with_multiprocessing(obj=self.bar_symbols, value=strategy_session.bar_symbols)
+        set_with_multiprocessing(obj=self.trade_symbols, value=strategy_session.trade_symbols)
     
     def set_market_data_symbols(self, symbol_id, market_data_symbol_dictionary):
         if route.symbol.id not in market_data_symbol_dictionary.keys():
@@ -184,7 +183,6 @@ class ExchangeWorkerBase(WorkerBase):
                 sleep(0.25)
 
     def start(self):
-        print(self.depth_symbols)
         self.symbols.extend(self.get_symbols())
         self.tokens.extend(self.get_tokens())
         # get fixed routes for the exchange

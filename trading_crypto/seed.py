@@ -17,6 +17,7 @@ from models.strategy import Strategy
 from models.token import Token 
 from models.symbol import Symbol
 from models.strategy_session import StrategySession
+from models.strategy_config import StrategyConfig, Channel
 from models.route import Route
 
 

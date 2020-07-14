@@ -1,19 +1,30 @@
+import typing
+import json
+
 from bases.data.base import Base
 from sqlalchemy import Column, Integer, ForeignKey, String, Float, Table, Boolean
 from sqlalchemy.orm import relationship
-import typing
 from typing import List
-from enums.channel import ChannelEnum
 from common.int_enum_type import IntEnum
+
+#enum imports
+from enums.channel import ChannelEnum
+
+#model imports
 from models.symbol import Symbol
-import json
+from models.strategy import Strategy
+
+channel_symbol_association = Table('channel_symbol_association', Base.metadata, 
+    Column('channel_id', Integer, ForeignKey('channel.id')),
+    Column('symbol_id', Integer, ForeignKey('symbol.id'))
+)
 
 class Channel(Base):
     __tablename__='channel'
     id = Column(Integer, nullable=False, primary_key=True)
     channel_type = Column(IntEnum(ChannelEnum), nullable=False)
-    strategy_config_id = Column(Integer, ForeignKey('strategy_config'), nullable=False) 
-    strategy_config = relationship('StrategyConfig', back_populates='channels', nullable=True)
+    strategy_config_id = Column(Integer, ForeignKey('strategy_config.id'), nullable=False) 
+    config = relationship('StrategyConfig', back_populates='channels')
     symbols = relationship('Symbol', secondary=channel_symbol_association)
 
     def __init__(self, channel_type, strategy_config=None, symbols=[]):
@@ -21,16 +32,12 @@ class Channel(Base):
         self.channel_type = channel_type 
         self.strategy_config = strategy_config
 
-channel_symbol_association = Table('channel_symbol_association', Base.metadata, 
-    Column('channel_id', Integer, ForeignKey('channel.id')),
-    Column('symbol_id', Integer, ForeignKey('symbol.id'))
-)
 
 class StrategyConfig(Base):
     __tablename__='strategy_config'
     id = Column(Integer, nullable=False, primary_key=True)
-    strategy_id = Column(Integer, ForeignKey('strategy.id'), nullable=False)
-    strategy = relationship('Strategy', back_populates='config')
+    strategy_id = Column(Integer, ForeignKey('worker.id'), nullable=False)
+    strategy = relationship('Strategy')
     channels = relationship('Channel', backref='strategy_config')
     is_backtest = Column(Boolean, nullable=False)
     meta = Column(Boolean, nullable=False)
@@ -53,8 +60,7 @@ class StrategyConfig(Base):
                     if enum_value not in channels.keys():
                         channels[enum_value] = Channel(enum_value)
                     channels[enum_value].symbols.append(symbol)
-        
-        return cls.__init__(config['ID'], list(channels.values()), config['RUNNING_BACKTEST'], config['META'])
+        return cls(config['ID'], list(channels.values()), config['RUNNING_BACKTEST'], config['META'])
        
 
     
