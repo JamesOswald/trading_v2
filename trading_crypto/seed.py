@@ -19,6 +19,7 @@ from models.symbol import Symbol
 from models.strategy_session import StrategySession
 from models.strategy_config import StrategyConfig, Channel
 from models.route import Route
+from models.manager import Manager
 
 
 
@@ -32,10 +33,12 @@ session = Session()
 
 # get_or_create(session, Worker, id = 1, name='OMS', worker_type=WorkerTypeEnum.OMS.value)
 
+get_or_create(session, Manager, name='OMS')
+
+get_or_create(session, Strategy, name='PONG')
 
 get_or_create(session, Exchange, name='GDAX')
 
-get_or_create(session, Strategy, name='PONG')
 
 # get_or_create(session, Worker, id = 2, name='HEARTBEAT', worker_type=WorkerTypeEnum.HEARTBEAT.value)
 
@@ -75,7 +78,7 @@ session.commit()
 # exchange = session.query(Worker).filter(Worker.id == 6).one()
 # BinanceService(exchange=exchange).get_exchange_info(update_symbols=True)
 
-exchange = session.query(Exchange).filter(Exchange.id == 1).one()
+exchange = session.query(Exchange).filter(Exchange.id == 3).one()
 GdaxService(exchange=exchange).get_tokens()
 GdaxService(exchange=exchange).get_market_pairs()
 

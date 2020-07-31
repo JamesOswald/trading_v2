@@ -40,6 +40,7 @@ from typing import List
 from models.worker import Worker
 from models.route import Route
 from models.strategy import Strategy
+from models.manager import Manager
 from models.backtester.test import Test
 from models.strategy_config import StrategyConfig, Channel
 
@@ -167,8 +168,7 @@ class StrategyBase(WorkerBase):
     def send_order(self, order):
         _, channel = self.mq_session.session()
         #save the order to the current session
-        order.time_created = time.time()
-        self.orders[(order.exchange_id, order.session_id, order.symbol_id, order.time_created)] = order
+        self.orders[(order.exchange_id, order.symbol_id, order.create_timestamp)] = order
         #get the correct route for the symbol/order
         oms_route = [route for route in self.strategy_session.oms_routes if route.route_type == RouteTypeEnum.STRATEGY_SUBMIT_ORDER and route.symbol_id == order.symbol_id][0]
         print(oms_route.route_string)
@@ -219,7 +219,7 @@ class StrategyBase(WorkerBase):
         
         start_consumer_process(fee_in_route.route_string, self.fee_callback, self.mq_session)
 
-        #self.oms_worker = self.session.query(Worker).filter(Worker.name == 'OMS').one()
+        self.oms_worker = self.session.query(Worker).filter(Worker.name == 'OMS').one()
         
         #generate all dynamic routes
         sleep(2)

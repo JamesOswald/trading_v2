@@ -7,6 +7,7 @@ import pickle as p
 import time
 import typing
 import threading
+import pika
 
 
 from autobahn.asyncio.websocket import WebSocketClientFactory, WebSocketClientProtocol
@@ -35,6 +36,7 @@ class GdaxWS(WebSocket):
     def __init__(self, socket_url):
         super(GdaxWS, self).__init__(socket_url)
         _, self.channel = self.mq_session.session()
+        self.incoming_depths = self.manager.dict()
 
     def on_message(self, message):
         data = json.loads(message)
@@ -90,15 +92,14 @@ class GdaxWorker(ExchangeWorkerBase):
                 subscription_message = {
                     "type": "subscribe",
                     "product_ids": list(ticker_id_map.keys()),
-                    #"product_ids": ["BTC-USD"],
                     "channels": self.message_subscription_map[channel_enum]
                 }
                 if channel_enum == ChannelEnum.DEPTH:
                     set_with_multiprocessing(obj=self.exchange_websocket.ticker_id_map_depth, value=ticker_id_map, key='dict_type')
                 if channel_enum == ChannelEnum.BAR:
-                    self.exchange_websocket.ticker_id_map_bar = ticker_id_map
+                    set_with_multiprocessing(obj=self.exchange_websocket.ticker_id_map_bar, value=ticker_id_map, key='dict_type')
                 if channel_enum == ChannelEnum.TRADES:
-                    self.exchange_websocket.ticker_id_map_trade = ticker_id_map
+                    set_with_multiprocessing(obj=self.exchange_websocket.ticker_id_map_trade, value=ticker_id_map, key='dict_type')
                 payload = json.dumps(subscription_message, ensure_ascii=False).encode('utf8')
                 print('sending message...')
                 self.exchange_websocket.ws.send(data=payload)
@@ -107,7 +108,6 @@ class GdaxWorker(ExchangeWorkerBase):
             print("Error : listen_worker {}".format(e))
             
     def start_consumers(self):
-        #start_consumer_process(queue='gdax_internal_depth_BTC-USD', callback=self.depth_consumer, mq_session=self.mq_session)
         for ticker in self.exchange_websocket.ticker_id_map_depth.keys():
             start_consumer_process(queue='gdax_internal_depth_{}'.format(ticker), callback=self.depth_consumer, mq_session=self.mq_session)
         for ticker in self.exchange_websocket.ticker_id_map_bar.keys():

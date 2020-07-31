@@ -9,6 +9,7 @@ from time import sleep
 import json
 import numpy as np
 import _pickle as p 
+import time
 from enums.order.order_side_enum import OrderSideEnum
 from enums.order.order_type_enum import OrderTypeEnum
 from enums.order.order_status_enum import OrderStatusEnum
@@ -64,23 +65,20 @@ class Pong(StrategyBase):
 
     
     def start(self):
-        # sleep(5)
-        # self.fetch_fee(self.exchanges[0])
-        # uuid_value = uuid.uuid4()
-        # order = Order(uuid_value,
-        # self.symbols[0].id, 
-        # side=OrderSideEnum.SELL, 
-        # session_id=self.strategy_session.id, 
-        # strategy_id=self.strategy_session.strategy_id, 
-        # exchange_id=10, 
-        # order_type=OrderTypeEnum.MARKET,
-        # time_in_force=OrderTifEnum.GTC,
-        # quote_quantity=0, 
-        # quantity=20,
-        # order_create_time=210,
-        # )
-        # self.send_order(order)
-        # print('order sent')
+        sleep(5)
+        uuid_value = uuid.uuid4()
+        order = Order(uuid_value,
+        self.symbols[0].id, 
+        order_side=OrderSideEnum.SELL, 
+        session_id=self.strategy_session.id, 
+        exchange_id=3, 
+        order_type=OrderTypeEnum.MARKET,
+        time_in_force=OrderTifEnum.GTC,
+        quote_quantity=0, 
+        base_quantity=20,
+        )
+        self.send_order(order)
+        print('order sent')
         
  
         while True:

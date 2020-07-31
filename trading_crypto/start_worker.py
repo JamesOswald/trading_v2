@@ -7,6 +7,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-w","--worker", help="specify worker to run", type=str)
 args = parser.parse_args()
 
+from manager.oms import OMS 
 from workers.gdax_worker import GdaxWorker, GdaxWS
 # from workers.market_data_worker import MDWorker
 
@@ -15,6 +16,7 @@ from models.websocket import WebSocket
 import asyncio
 
 workers  = {
+    'oms': OMS,
     'gdax': GdaxWorker
    # 'mdworker': MDWorker
 }
