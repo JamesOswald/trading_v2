@@ -1,7 +1,7 @@
 {
     "ID" : 3,
     "SYMBOLS" : {
-        "20" : [0]
+        "64" : [0]
     },
     "RUNNING_BACKTEST" : false,
     "META" : false

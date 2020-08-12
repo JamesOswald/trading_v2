@@ -44,11 +44,13 @@ class GdaxWS(WebSocket):
             ticker = data['product_id']
             queue = 'gdax_internal_depth_{}'.format(ticker)
             self.channel.basic_publish(exchange='', routing_key=queue, body=p.dumps(data))
+            #message_queue.put(data)
 
         if data['type'] == 'ticker':
             ticker = data['product_id']
             queue = 'gdax_internal_bar_{}'.format(ticker)
             self.channel.basic_publish(exchange='', routing_key=queue, body=p.dumps(data))
+            #queue.put(data)
 
         if data['type'] == 'match':
             ticker = data['product_id']
@@ -109,14 +111,20 @@ class GdaxWorker(ExchangeWorkerBase):
             
     def start_consumers(self):
         for ticker in self.exchange_websocket.ticker_id_map_depth.keys():
+            # queue = Queue()
+
+            # depth_consume = Process(target=self.depth_consumer, args=(queue,))
+            # depth_consume.start()
             start_consumer_process(queue='gdax_internal_depth_{}'.format(ticker), callback=self.depth_consumer, mq_session=self.mq_session)
         for ticker in self.exchange_websocket.ticker_id_map_bar.keys():
             start_consumer_process(queue='gdax_internal_bar_{}'.format(ticker), callback=self.bar_consumer, mq_session=self.mq_session)
         for ticker in self.exchange_websocket.ticker_id_map_trade.keys():
             start_consumer_process(queue='gdax_internal_trade_{}'.format(ticker), callback=self.trade_consumer, mq_session=self.mq_session)
  
-    def depth_consumer(self, route, method, properties, body): 
-        data = p.loads(body)
+    #def depth_consumer(self, route, method, properties, body): 
+    def depth_consumer(self, queue):
+        #data = p.loads(body)
+        data = queue.get()
         symbol_id = self.exchange_websocket.ticker_id_map_depth[data['product_id']]
         bid = False
         ask = False

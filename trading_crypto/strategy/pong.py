@@ -66,19 +66,19 @@ class Pong(StrategyBase):
     
     def start(self):
         sleep(5)
-        uuid_value = uuid.uuid4()
-        order = Order(uuid_value,
-        self.symbols[0].id, 
-        order_side=OrderSideEnum.SELL, 
-        session_id=self.strategy_session.id, 
-        exchange_id=3, 
-        order_type=OrderTypeEnum.MARKET,
-        time_in_force=OrderTifEnum.GTC,
-        quote_quantity=0, 
-        base_quantity=20,
-        )
-        self.send_order(order)
-        print('order sent')
+        # uuid_value = uuid.uuid4()
+        # order = Order(uuid_value,
+        # self.symbols[0].id, 
+        # order_side=OrderSideEnum.SELL, 
+        # session_id=self.strategy_session.id, 
+        # exchange_id=3, 
+        # order_type=OrderTypeEnum.MARKET,
+        # time_in_force=OrderTifEnum.GTC,
+        # quote_quantity=0, 
+        # base_quantity=20,
+        # )
+        # self.send_order(order)
+        # print('order sent')
         
  
         while True:
