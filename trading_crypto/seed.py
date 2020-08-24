@@ -37,6 +37,8 @@ get_or_create(session, Manager, name='OMS')
 
 get_or_create(session, Strategy, name='PONG')
 
+get_or_create(session, Exchange, name='BACKTESTER')
+
 get_or_create(session, Exchange, name='GDAX')
 
 
@@ -78,7 +80,7 @@ session.commit()
 # exchange = session.query(Worker).filter(Worker.id == 6).one()
 # BinanceService(exchange=exchange).get_exchange_info(update_symbols=True)
 
-exchange = session.query(Exchange).filter(Exchange.id == 3).one()
+exchange = session.query(Exchange).filter(Exchange.id == 4).one()
 GdaxService(exchange=exchange).get_tokens()
 GdaxService(exchange=exchange).get_market_pairs()
 

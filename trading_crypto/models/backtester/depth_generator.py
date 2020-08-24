@@ -2,13 +2,20 @@ import random
 import math
 import numpy as np
 import pandas as pd
+import time
+import typing
+from typing import List
 from scipy import array, linalg, dot
 
+#model imports
 from models.backtester.depth_feeder import DepthFeeder
 from models.backtester.test import Test
 from models.symbol import Symbol
 from models.depth import Depth
 from models.fee import Fee
+
+#enum imports
+from enums.depth_side import DepthSideEnum
 
 class DepthGenerator(DepthFeeder):
     def __init__(self, symbol:Symbol, volatility:float, bias:float, expected_return:float, number_of_updates:int, runtime:int, min_book_spacing:float=0.0001, max_book_spacing=0.01, min_book_quantity=0.001, max_book_quantity=1000, book_size:int=5, timestamps:List[int]=None):

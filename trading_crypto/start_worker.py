@@ -8,6 +8,7 @@ parser.add_argument("-w","--worker", help="specify worker to run", type=str)
 args = parser.parse_args()
 
 from manager.oms import OMS 
+from workers.backtest_worker import BacktestWorker
 from workers.gdax_worker import GdaxWorker, GdaxWS
 # from workers.market_data_worker import MDWorker
 
@@ -17,6 +18,7 @@ import asyncio
 
 workers  = {
     'oms': OMS,
+    'backtest' : BacktestWorker,
     'gdax': GdaxWorker
    # 'mdworker': MDWorker
 }

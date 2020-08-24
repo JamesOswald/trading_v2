@@ -194,9 +194,9 @@ class StrategyBase(WorkerBase):
         for c in self.config.channels:
             if c.channel_type == ChannelEnum.DEPTH:
                 depth_symbols = c.symbols
-            if c.channel_type == ChannelEnum.BAR.value:
+            if c.channel_type == ChannelEnum.BAR:
                 bar_symbols = c.symbols
-            if c.channel_type == ChannelEnum.TRADES.value:
+            if c.channel_type == ChannelEnum.TRADES:
                 trade_symbols = c.symbols
         channel_dict_map = {}
         channel_dict_map[ChannelEnum.DEPTH] = (depth_symbols, "depth")
@@ -260,7 +260,8 @@ class StrategyBase(WorkerBase):
                 channel.basic_publish(exchange='', routing_key="{}_session_subscribe".format(exchange.name.lower()), body=p.dumps(self.strategy_session))
             else: 
                 #all enviroment variables needed for running the backtest begin with the prefix BACKTEST and are passed to the backtester these can be modified in the respective strategy backtest env file
-                backtest_config = {k:v for k,v in os.environ.items() if 'BACKTEST_' in k}
+                with open(self.config.backtest_config) as backtest_file:
+                    backtest_config = json.load(backtest_file)
                 channel.basic_publish(exchange='', routing_key=routes.backtester_session_subscribe, body=p.dumps((backtest_config, self.strategy_session)))
 
         #notify oms and logger of subscription event if not meta

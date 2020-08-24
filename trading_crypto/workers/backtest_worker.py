@@ -11,30 +11,36 @@ from multiprocessing import Process, Queue, Manager
 from common.generic_consumer import start_consumer_process
 from common.set_with_multiprocessing import set_with_multiprocessing
 from common.two_way_dict import TwoWayDict
-from test.random_triangular_arbitrage import RandomTriangularArbitrage, DepthGenerator
-from test.statistical_arbitrage_backtest import StatisticalArbitrageTest, BarGenerator
-from test.saved_test import SavedTestRunner
 
+from enums.channel import ChannelEnum
+from enums.test_type import TestTypeEnum
+from enums.order.order_status_enum import OrderStatusEnum
+from enums.order.order_side_enum import OrderSideEnum
+from enums.order.order_type_enum import OrderTypeEnum
 
 from models.route import Route
 from models.backtester.test import Test
-from models.enums.channel_enums import ChannelEnum
-from models.enums.test_type import TestTypeEnum
-from models.enums.orders.order_status_enum import OrderStatusEnum
-from models.enums.orders.order_side_enum import OrderSideEnum
-from models.enums.orders.order_type_enum import OrderTypeEnum
+from models.backtester.bar_generator import BarGenerator, CorrelatedBarGenerator
+from models.backtester.depth_generator import DepthGenerator
+
+from test.random_triangular_arbitrage import RandomTriangularArbitrage
+from test.statistical_arbitrage_backtest import StatisticalArbitrageTest
+from test.saved_test import SavedTestRunner
 
 class BackTestWorker(ExchangeWorkerBase): 
     def __init__(self):
-        super(BackTestWorker, self).__init__(10)
-        self.test_enum_to_class_map = TwoWayDict()
-        self.test_enum_to_class_map[TestTypeEnum.RandomTriangularArbitrage] = RandomTriangularArbitrage
-        self.test_enum_to_class_map[TestTypeEnum.SavedTest] = SavedTestRunner
-        self.test_enum_to_class_map[TestTypeEnum.StatisticalArbitrage] = StatisticalArbitrageTest
+        exchange_id = int(os.getenv("BACKTEST_EXCHANGE_ID"))
+        super(BackTestWorker, self).__init__(exchange_id)
         self.running_tests = self.manager.dict()
         self.open_orders = self.manager.dict()
         self.exchange_orders = self.manager.dict()
 
+        #test mappings
+        self.test_enum_to_class_map = TwoWayDict()
+        self.test_enum_to_class_map[TestTypeEnum.RandomTriangularArbitrage] = RandomTriangularArbitrage
+        self.test_enum_to_class_map[TestTypeEnum.SavedTest] = SavedTestRunner
+        self.test_enum_to_class_map[TestTypeEnum.StatisticalArbitrage] = StatisticalArbitrageTest
+       
         self.OrderSideMap = TwoWayDict()
         self.OrderSideMap['BUY'] = OrderSideEnum.BUY
         self.OrderSideMap['SELL'] = OrderSideEnum.SELL
@@ -130,23 +136,23 @@ class BackTestWorker(ExchangeWorkerBase):
         base = symbol.base
         quote = symbol.quote
         if order.order_type == OrderTypeEnum.MARKET:
-            if order.side == OrderSideEnum.BUY:
+            if order.order_side == OrderSideEnum.BUY:
                 if self.test.balances[quote] < order.quote_quantity:
                     raise Exception('Invalid order: Balance less than order price.')
                 else:
-                    base_purchased, quote_remaining = self.calculate_order(order, order.side, order.order_type)
+                    base_purchased, quote_remaining = self.calculate_order(order, order.order_side, order.order_type)
                     self.test.balances[quote] -= (order.quote_quantity - quote_remaining)
                     self.test.balances[base] += base_purchased * (1-self.test.fee.taker)
-                    order.status = OrderStatusEnum.FILLED
+                    order.order_status = OrderStatusEnum.FILLED
                     order.exchange_order_id=uuid.uuid4()
-            if order.side == OrderSideEnum.SELL:
-                if self.test.balances[base] < order.quantity:
+            if order.order_side == OrderSideEnum.SELL:
+                if self.test.balances[base] < order.base_quantity:
                     raise Exception('Invalid order: Balance less than order quantity')
                 else:
-                    quote_purchased, base_remaining = self.calculate_order(order, order.side, order.order_type)
+                    quote_purchased, base_remaining = self.calculate_order(order, order.order_side, order.order_type)
                     self.test.balances[base] -= (order.quantity - base_remaining)
                     self.test.balances[quote] += quote_purchased * (1-self.test.fee.taker)
-                    order.status = OrderStatusEnum.FILLED
+                    order.order_status = OrderStatusEnum.FILLED
                     order.exchange_order_id=uuid.uuid4()
             self.exchange_orders[order.exchange_order_id] = order
             self.open_orders[order.uuid] = order
@@ -157,12 +163,12 @@ class BackTestWorker(ExchangeWorkerBase):
 
         
     def calculate_order(self, order, side, order_type):
-        orderbook = self.test.get_current_orderbook(order.order_create_time, order.symbol_id)
+        orderbook = self.test.get_current_orderbook(order.create_timestamp, order.symbol_id)
         if side == OrderSideEnum.BUY and order_type == OrderTypeEnum.MARKET:
             avg_price, base_purchased, quote = orderbook.take_from_ask(order.quote_quantity)
             return base_purchased, quote
         if side == OrderSideEnum.SELL and order_type == OrderTypeEnum.MARKET:
-            avg_price, quote_purchased, base = orderbook.take_from_bid(order.quantity)
+            avg_price, quote_purchased, base = orderbook.take_from_bid(order.base_quantity)
             return quote_purchased, base
         if side == OrderSideEnum.BUY and order_type == OrderTypeEnum.LIMIT:
             raise NotImplementedError

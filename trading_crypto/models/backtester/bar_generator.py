@@ -2,8 +2,11 @@ import random
 import math
 import numpy as np
 import pandas as pd
+import typing
+from typing import List
 from scipy import array, linalg, dot
 
+#model imports
 from models.backtester.bar_feeder import BarFeeder
 from models.backtester.depth_feeder import DepthFeeder
 from models.backtester.test import Test
@@ -11,6 +14,9 @@ from models.symbol import Symbol
 from models.depth import Depth
 from models.fee import Fee
 from models.bar import Bar
+
+#enum imports
+from enums.depth_side import DepthSideEnum
 
 
 class BarGenerator(BarFeeder):

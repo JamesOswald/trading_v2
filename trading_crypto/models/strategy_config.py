@@ -42,11 +42,12 @@ class StrategyConfig(Base):
     is_backtest = Column(Boolean, nullable=False)
     meta = Column(Boolean, nullable=False)
     
-    def __init__(self, strategy_id, channels, is_backtest, meta):
+    def __init__(self, strategy_id, channels, is_backtest, meta, backtest_config=None):
         self.strategy_id = strategy_id
         self.channels = channels
         self.is_backtest = is_backtest
         self.meta = meta 
+        self.backtest_config = backtest_config
     
     @classmethod
     def from_json(cls, session, config_path):
@@ -60,7 +61,7 @@ class StrategyConfig(Base):
                     if enum_value not in channels.keys():
                         channels[enum_value] = Channel(enum_value)
                     channels[enum_value].symbols.append(symbol)
-        return cls(config['ID'], list(channels.values()), config['RUNNING_BACKTEST'], config['META'])
+        return cls(config['ID'], list(channels.values()), config['RUNNING_BACKTEST'], config['META'], config['BACKTEST_FILE'])
        
 
     

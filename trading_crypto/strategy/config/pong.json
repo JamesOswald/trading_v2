@@ -4,5 +4,6 @@
         "64" : [0]
     },
     "RUNNING_BACKTEST" : false,
-    "META" : false
+    "META" : false,
+    "BACKTEST_FILE" : "test/config/backtest.json"
 }
