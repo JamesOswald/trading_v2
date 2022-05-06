@@ -1,0 +1,8 @@
+{
+    "BACKTEST_CLASS_ENUM" : 1,
+    "SYMBOL_PARAMETERS" : {
+        "20" : {
+            "volatility" : 0.1
+        }
+    }
+}

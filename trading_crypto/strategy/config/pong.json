@@ -1,0 +1,9 @@
+{
+    "ID" : 3,
+    "SYMBOLS" : {
+        "64" : [0]
+    },
+    "RUNNING_BACKTEST" : false,
+    "META" : false,
+    "BACKTEST_FILE" : "test/config/backtest.json"
+}
